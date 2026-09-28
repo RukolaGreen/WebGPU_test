@@ -1,0 +1,512 @@
+<html>
+    <head>
+        <title>WebGPU_test</title>
+    </head>
+    <body>
+        <table>
+            <tr>
+                <th></th>
+                <td>
+                    <canvas id="scr" width="800" height="600"></canvas>
+                </td>
+                <td>
+                    <input type="range" id="fb_sc" min="0.0" max="1.57" value="0.6" step="0.01" 
+                        style="writing-mode: vertical-lr; height: 600px; direction: rtl;">
+                </td>
+            </tr>
+            <tr>
+                <th></th>
+                <td>
+                    <input type="range" id="fa_sc" min="-1.57" max="1.57" value="0.0" step="0.01" style="width: 800px">
+                </td>
+                <td>
+                    <button onclick="set_def_opt()" style="width: 2ch; height: 2ch;"></button>
+                </td>
+            </tr>
+        </table>
+        <table><tr><th></th><td>
+            <table style="border: solid 2px rgb(200,200,200); width: 400px">
+                <tr>
+                    <th>
+                        Z-координата угла 1
+                    </th>
+                    <td>
+                        <input type="range" id="y1_sc" min="-0.5" max="0.5" value="0.0" step="0.01">
+                    </td>
+                    <td>
+                        <div id="y1_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Z-координата угла 2
+                    </th>
+                    <td>
+                        <input type="range" id="y2_sc" min="-0.5" max="0.5" value="0.0" step="0.01">
+                    </td>
+                    <td>
+                        <div id="y2_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Z-координата угла 3
+                    </th>
+                    <td>
+                        <input type="range" id="y3_sc" min="-0.5" max="0.5" value="0.0" step="0.01">
+                    </td>
+                    <td>
+                        <div id="y3_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Z-координата угла 4
+                    </th>
+                    <td>
+                        <input type="range" id="y4_sc" min="-0.5" max="0.5" value="0.0" step="0.01">
+                    </td>
+                    <td>
+                        <div id="y4_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+            </table>
+        </td><td>
+                       <table style="border: solid 2px rgb(200,200,200); width: 400px">
+                <tr>
+                    <th colspan="2">
+                        Включить гравитацию
+                    </th>
+                    <td>
+                        <input type="checkbox" id="grav_is_on_ch">
+                    </td>
+                </tr>
+                <tr>
+                    <th colspan="2">
+                        Прицепить осциллятор
+                    </th>
+                    <td>
+                        <input type="checkbox" id="bound_with_osc_ch">
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Частота
+                    </th>
+                    <td>
+                        <input type="range" id="freq_sc" min="0.0" max="16.0" value="8.0" step="0.01">
+                    </td>
+                    <td>
+                        <div id="freq_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Амплитуда
+                    </th>
+                    <td>
+                        <input type="range" id="amplitude_sc" min="0.0" max="0.4" value="0.2" step="0.01">
+                    </td>
+                    <td>
+                        <div id="amplitude_lb" style="width: 5ch">0</div>
+                    </td>
+                </tr>
+            </table>
+        </td></tr></table>
+    </body>
+<script>
+const y1_sc = document.getElementById("y1_sc");
+const y1_lb = document.getElementById("y1_lb");
+const y2_sc = document.getElementById("y2_sc");
+const y2_lb = document.getElementById("y2_lb");
+const y3_sc = document.getElementById("y3_sc");
+const y3_lb = document.getElementById("y3_lb");
+const y4_sc = document.getElementById("y4_sc");
+const y4_lb = document.getElementById("y4_lb");
+
+const grav_is_on_ch = document.getElementById("grav_is_on_ch");
+const bound_with_osc_ch = document.getElementById("bound_with_osc_ch");
+
+const fa_sc = document.getElementById("fa_sc");
+const fb_sc = document.getElementById("fb_sc");
+
+const freq_sc = document.getElementById("freq_sc");
+const freq_lb = document.getElementById("freq_lb");
+const amplitude_sc = document.getElementById("amplitude_sc");
+const amplitude_lb = document.getElementById("amplitude_lb");
+
+const N = 31;
+const N_points = N * N;
+const L = 1.5;
+const dist1 = L / (N - 1);
+const dist2 = (2.0 ** 0.5) * dist1;
+const scr_coef = 600 / 800;
+const focus = 1.0;
+const R = 1.8;
+let time = 0.0;
+let phase = 0.0;
+
+let y1 = 0.0;
+let y2 = 0.0;
+let y3 = 0.0;
+let y4 = 0.0;
+let grav_is_on = false;
+let bound_with_osc = false;
+let amplitude = 0.4;
+let freq = 8.0;
+let fa = 0.2;
+let fb = 0.6;
+
+function set_def_opt(){
+    y1 = 0.0;
+    y1_sc.value = y1;
+    y1_lb.innerText = y1;
+
+    y2 = 0.0;
+    y2_sc.value = y2;
+    y2_lb.innerText = y2;
+
+    y3 = 0.0;
+    y3_sc.value = y3;
+    y3_lb.innerText = y3;
+
+    y4 = 0.0;
+    y4_sc.value = y4;
+    y4_lb.innerText = y4;
+
+    fa = 0.0;
+    fa_sc.value = fa;
+
+    fb = 0.6;
+    fb_sc.value = 0.6;
+
+    grav_is_on = false;
+    grav_is_on_ch.checked = false;
+
+    bound_with_osc = false;
+    bound_with_osc_ch.checked = false;
+
+    amplitude = 0.2;
+    amplitude_sc.value = amplitude;
+    amplitude_lb.innerText = amplitude;
+
+    freq = 8.0;
+    freq_sc.value = freq;
+    freq_lb.innerText = freq;
+}
+
+const coords = new Float32Array(3 * N_points);
+for(let ix = 0; ix < N; ix++){
+    for(let iy = 0; iy < N; iy++){
+        const i = ix + iy * N;
+        coords[3 * i + 0] = -0.5 * L + ix * dist1;
+        coords[3 * i + 1] = -0.5 * L + iy * dist1;
+        coords[3 * i + 2] = 0.0;
+    }
+}
+const N_coords = coords.length;
+const prev_coord = new Float32Array(coords);
+
+const constrains = [];
+for(let ix = 0; ix < N; ix++){
+    for(let iy = 0; iy < N; iy++) {
+        const i = ix + iy * N;
+
+        if(ix < N - 1) {
+            const j = (ix + 1) + iy * N;
+            constrains.push([i, j, dist1]);
+        }
+
+        if(iy < N - 1) {
+            const j = ix + (iy + 1) * N;
+            constrains.push([i, j, dist1]);
+        }
+
+        if((ix < N - 1) && (iy < N - 1)) {
+            const j = (ix + 1) + (iy + 1) * N;
+            constrains.push([i, j, dist2]);
+        }
+    }
+}
+const N_constr = constrains.length;
+
+const line_indexes = new Uint16Array(2 * N_constr);
+for (let i = 0; i < N_constr; i++) {
+    line_indexes[2 * i + 0] = constrains[i][0];
+    line_indexes[2 * i + 1] = constrains[i][1];
+}
+
+async function simulate(){
+    const adapter = await navigator.gpu.requestAdapter();
+    const device = await adapter.requestDevice();
+    const format = navigator.gpu.getPreferredCanvasFormat();
+
+    const scr = document.getElementById("scr");
+    const ctx = scr.getContext('webgpu');
+    ctx.configure({
+        device,
+        format
+    });
+
+    const uniform_buf = device.createBuffer({
+        size: 64,
+        usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST
+    });
+    const vertex_buf = device.createBuffer({
+        size: coords.byteLength,
+        usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST
+    });
+    const index_buf = device.createBuffer({
+        size: line_indexes.byteLength,
+        usage: GPUBufferUsage.INDEX | GPUBufferUsage.COPY_DST
+    });
+    await device.queue.writeBuffer(index_buf, 0, line_indexes);
+
+    const shader_module = device.createShaderModule({ code: `
+        @group(0) @binding(0) var<uniform> matrix : mat4x4<f32>;
+        
+        @vertex fn vertex_shader(@location(0) p : vec3<f32>) -> @builtin(position) vec4<f32> {
+            return matrix * vec4<f32>(p, 1.0);
+        } 
+
+        @fragment fn fragment_shader() -> @location(0) vec4<f32> {
+            return vec4<f32>(0.25, 0.83, 0.91, 1.0);
+        }
+    `}); 
+
+    const pipeline = device.createRenderPipeline({
+        layout: 'auto',
+        vertex: {
+            module: shader_module,
+            entryPoint: 'vertex_shader',
+            buffers: [{
+                arrayStride: 3 * 4,
+                attributes: [{
+                    shaderLocation: 0,
+                    offset: 0,
+                    format: 'float32x3'
+                }]
+            }]
+        },
+        fragment: {
+            module: shader_module,
+            entryPoint: 'fragment_shader',
+            targets: [{format: format}]
+        },
+        primitive: {
+            topology: 'line-list'
+        }
+    });
+
+    const bind_group = device.createBindGroup({
+        layout: pipeline.getBindGroupLayout(0),
+        entries: [{
+            binding: 0,
+            resource: {
+                buffer: uniform_buf
+            }
+        }]
+    });
+
+    function ask_UI(){
+        y1 = parseFloat(y1_sc.value);
+        y1_lb.innerText = y1_sc.value;
+        y2 = parseFloat(y2_sc.value);
+        y2_lb.innerText = y2_sc.value;
+        y3 = parseFloat(y3_sc.value);
+        y3_lb.innerText = y3_sc.value;
+        y4 = parseFloat(y4_sc.value);
+        y4_lb.innerText = y4_sc.value;
+
+        fa = parseFloat(fa_sc.value);
+        fb = parseFloat(fb_sc.value);
+
+        if(grav_is_on_ch.checked){
+            grav_is_on = true;
+        }
+        else{
+            grav_is_on = false;
+        }
+
+        if(bound_with_osc_ch.checked){
+            bound_with_osc = true;
+        }
+        else{
+            bound_with_osc = false;
+        }
+
+        freq = parseFloat(freq_sc.value);
+        freq_lb.innerText = freq_sc.value;
+        amplitude = parseFloat(amplitude_sc.value);
+        amplitude_lb.innerText = amplitude_sc.value;
+    }
+
+    async function calc_frame(){
+        const N_substep = 4;
+        const N_iters = 20;
+        const damping = 0.99;
+        const dt = 1.0/60.0;
+        const ddt = dt / N_substep;
+        const grav = grav_is_on ? 9.81 : 0.0;
+
+        for(let is = 0; is < N_substep; is++){
+            time += ddt;
+            phase += freq * ddt;
+
+            for (let i = 0; i < N_points; i++){
+                const k = 3 * i;
+
+                if(i == 0 + 0 * N) {
+                    prev_coord[k + 0] = coords[k + 0];
+                    prev_coord[k + 1] = coords[k + 1];
+                    prev_coord[k + 2] = coords[k + 2];
+                    coords[k + 0] = - 0.5 * L;
+                    coords[k + 1] = - 0.5 * L;
+                    coords[k + 2] = y1;
+                    continue;
+                }
+                if(i == (N - 1) + 0 * N) {
+                    prev_coord[k + 0] = coords[k + 0];
+                    prev_coord[k + 1] = coords[k + 1];
+                    prev_coord[k + 2] = coords[k + 2];
+                    coords[k + 0] = 0.5 * L;
+                    coords[k + 1] = - 0.5 * L;
+                    coords[k + 2] = y2;
+                    continue;
+                }
+                if(i == 0 + (N - 1) * N) {
+                    prev_coord[k + 0] = coords[k + 0];
+                    prev_coord[k + 1] = coords[k + 1];
+                    prev_coord[k + 2] = coords[k + 2];
+                    coords[k + 0] = - 0.5 * L;
+                    coords[k + 1] = 0.5 * L;
+                    coords[k + 2] = y3;
+                    continue;
+                }
+                if(i == (N - 1) + (N - 1) * N) {
+                    prev_coord[k + 0] = coords[k + 0];
+                    prev_coord[k + 1] = coords[k + 1];
+                    prev_coord[k + 2] = coords[k + 2];
+                    coords[k + 0] = 0.5 * L;
+                    coords[k + 1] = 0.5 * L;
+                    coords[k + 2] = y4;
+                    continue;
+                }
+                if(i == Math.floor(N / 2) + Math.floor(N / 2) * N && bound_with_osc) {
+                    prev_coord[k + 0] = coords[k + 0];
+                    prev_coord[k + 1] = coords[k + 1];
+                    prev_coord[k + 2] = coords[k + 2];
+                    coords[k + 0] = 0.0;
+                    coords[k + 1] = 0.0;
+                    coords[k + 2] = amplitude * Math.sin(phase);
+                    continue;
+                };
+
+                const vx = (coords[k + 0] - prev_coord[k + 0]) * damping / ddt;
+                const vy = (coords[k + 1] - prev_coord[k + 1]) * damping / ddt;
+                const vz = (coords[k + 2] - prev_coord[k + 2]) * damping / ddt;
+
+                prev_coord[k + 0] = coords[k + 0];
+                prev_coord[k + 1] = coords[k + 1];
+                prev_coord[k + 2] = coords[k + 2];
+
+                coords[k + 0] += vx * ddt;
+                coords[k + 1] += vy * ddt;
+                coords[k + 2] += vz * ddt - 0.5 * grav * ddt * ddt;
+            }
+
+            for (let it = 0; it < N_iters; it++){
+                for (let ic = 0; ic < N_constr; ic++){
+                    const [i, j, dist_exp] = constrains[ic];
+
+                    const ki = 3 * i;
+                    const kj = 3 * j;
+
+                    const dx = coords[kj + 0] - coords[ki + 0];
+                    const dy = coords[kj + 1] - coords[ki + 1];
+                    const dz = coords[kj + 2] - coords[ki + 2];
+
+                    const dist_eval = Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+                    if(dist_eval < 0.00001) continue;
+                    
+                    const corr = 0.5 * (dist_eval - dist_exp) / dist_eval;
+
+                    coords[ki + 0] += dx * corr;
+                    coords[ki + 1] += dy * corr;
+                    coords[ki + 2] += dz * corr;
+
+                    coords[kj + 0] -= dx * corr;
+                    coords[kj + 1] -= dy * corr;
+                    coords[kj + 2] -= dz * corr;
+                }
+            }
+
+        }
+    }
+
+    const matrix = new Float32Array(16); 
+    function fill_matrix(){
+        const sinfa = Math.sin(fa);
+        const sinfb = Math.sin(fb);
+        const cosfa = Math.cos(fa);
+        const cosfb = Math.cos(fb);
+        const A = -1; //
+
+        matrix[0]   = -scr_coef * sinfa;
+        matrix[1]   = -cosfa * sinfb;
+        matrix[2]   = A * cosfa * cosfb;
+        matrix[3]   = -focus * cosfa * cosfb;
+
+        matrix[4]   = scr_coef * cosfa;
+        matrix[5]   = -sinfa * sinfb;
+        matrix[6]   = A * sinfa * cosfb;
+        matrix[7]   = -focus * sinfa * cosfb;
+
+        matrix[8]   = 0;
+        matrix[9]   = cosfb;
+        matrix[10]  = A * sinfb;
+        matrix[11]  = -focus * sinfb;
+
+        matrix[12]  = 0;
+        matrix[13]  = 0;
+        matrix[14]  = A * (-R);
+        matrix[15]  = focus * R;
+    }
+
+    async function render_frame(){
+        ask_UI();
+
+        calc_frame();
+
+        fill_matrix()
+        await device.queue.writeBuffer(uniform_buf, 0, matrix);
+        await device.queue.writeBuffer(vertex_buf, 0, coords);
+
+        const encoder = device.createCommandEncoder();
+        const render_pass = encoder.beginRenderPass({
+            colorAttachments: [{
+                view: ctx.getCurrentTexture().createView(),
+                loadOp: 'clear',
+                storeOp: 'store',
+                clearValue: {r: 0.1, g: 0.1, b: 0.3, a: 1}
+            }]
+        });
+        render_pass.setPipeline(pipeline);
+        render_pass.setBindGroup(0, bind_group);
+        render_pass.setVertexBuffer(0, vertex_buf);
+        render_pass.setIndexBuffer(index_buf, 'uint16');
+        render_pass.drawIndexed(line_indexes.length);
+        render_pass.end();
+        device.queue.submit([encoder.finish()]);
+
+        requestAnimationFrame(render_frame);
+    }
+
+    render_frame();
+}
+
+simulate();
+
+</script>
+</html>
